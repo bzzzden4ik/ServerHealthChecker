@@ -23,7 +23,7 @@ type cpuTicks struct {
 }
 
 func main() {
-	log.Println("Запуск Go-агента мониторинга...")
+	log.Println("Go-agent monitoring starting...")
 
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
@@ -38,13 +38,13 @@ func main() {
   ram_usage REAL
  );`
 	if _, err := db.Exec(createTableSQL); err != nil {
-		log.Fatalf("Ошибка создания таблицы: %v", err)
+		log.Fatalf("Table creation error: %v", err)
 	}
-	log.Println("База данных готова к работе.")
+	log.Println("Database ready for work.")
 
 	prevTicks, err := getCPUTicks()
 	if err != nil {
-		log.Printf("Предупреждение: не удалось получить начальные тики CPU: %v", err)
+		log.Printf("Warning: problems with first CPU ticks: %v", err)
 	}
 
 	ticker := time.NewTicker(scrapeInterval)
@@ -53,7 +53,7 @@ func main() {
 	for range ticker.C {
 		ramUsage, err := getRAMUsage()
 		if err != nil {
-			log.Printf("Ошибка сбора метрик RAM: %v", err)
+			log.Printf("RAM metrics error: %v", err)
 			continue
 		}
 
@@ -63,16 +63,16 @@ func main() {
 			cpuUsage = calculateCPUPercentage(prevTicks, currentTicks)
 			prevTicks = currentTicks
 		} else {
-			log.Printf("Ошибка сбора метрик CPU: %v", err)
+			log.Printf("CPU metrics error: %v", err)
 			continue
 		}
 
 		insertSQL := `INSERT INTO system_metrics (cpu_usage, ram_usage) VALUES (?, ?);`
 		_, err = db.Exec(insertSQL, cpuUsage, ramUsage)
 		if err != nil {
-			log.Printf("Ошибка записи в БД: %v", err)
+			log.Printf("Error with db writing: %v", err)
 		} else {
-			log.Printf("[DATA] CPU: %.2f%% | RAM: %.2f%% записано в %s", cpuUsage, ramUsage, dbFile)
+			log.Printf("[DATA] CPU: %.2f%% | RAM: %.2f%% wrote in %s", cpuUsage, ramUsage, dbFile)
 		}
 	}
 }
@@ -100,7 +100,7 @@ func getRAMUsage() (float64, error) {
 	}
 
 	if memTotal == 0 {
-		return 0, fmt.Errorf("MemTotal равен 0, не удалось расчитать")
+		return 0, fmt.Errorf("MemTotal equal to 0, error with sum up")
 	}
 
 	usedMem := memTotal - memAvailable
@@ -115,12 +115,12 @@ func getCPUTicks() (cpuTicks, error) {
 
 	lines := strings.Split(string(data), "\n")
 	if len(lines) == 0 {
-		return cpuTicks{}, fmt.Errorf("пустой /proc/stat")
+		return cpuTicks{}, fmt.Errorf("empty /proc/stat")
 	}
 
 	fields := strings.Fields(lines[0])
 	if len(fields) < 5 {
-		return cpuTicks{}, fmt.Errorf("неверный формат /proc/stat")
+		return cpuTicks{}, fmt.Errorf("bad format /proc/stat")
 	}
 
 	var t cpuTicks
